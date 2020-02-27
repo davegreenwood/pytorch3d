@@ -19,3 +19,4 @@ website/_tutorials/
 website/static/files/
 website/pages/tutorials/*
 !website/pages/tutorials/index.js
+_C.cpython-37m-darwin.so
