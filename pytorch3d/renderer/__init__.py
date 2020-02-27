@@ -13,22 +13,18 @@ from .cameras import (
     get_world_to_view_transform,
     look_at_rotation,
     look_at_view_transform,
-    look_at_from_eye_view_transform,
 )
 from .lighting import DirectionalLights, PointLights, diffuse, specular
 from .materials import Materials
 from .mesh import (
-    HardFlatShader,
-    HardGouraudShader,
-    HardPhongShader,
+    GouradShader,
     MeshRasterizer,
     MeshRenderer,
+    PhongShader,
     RasterizationSettings,
-    SoftGouraudShader,
-    SoftPhongShader,
-    SoftSilhouetteShader,
-    TexturedSoftPhongShader,
-    gouraud_shading,
+    SilhouetteShader,
+    TexturedPhongShader,
+    gourad_shading,
     interpolate_face_attributes,
     interpolate_texture_map,
     interpolate_vertex_colors,

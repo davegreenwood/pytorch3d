@@ -10,8 +10,7 @@ import sys
 from typing import Tuple, Union
 import torch
 
-from pytorch3d.ops.mesh_face_areas_normals import mesh_face_areas_normals
-from pytorch3d.ops.packed_to_padded import packed_to_padded
+from pytorch3d import _C
 
 
 def sample_points_from_meshes(
@@ -52,11 +51,11 @@ def sample_points_from_meshes(
 
     # Only compute samples for non empty meshes
     with torch.no_grad():
-        areas, _ = mesh_face_areas_normals(
+        areas, _ = _C.face_areas_normals(
             verts, faces
         )  # Face areas can be zero.
         max_faces = meshes.num_faces_per_mesh().max().item()
-        areas_padded = packed_to_padded(
+        areas_padded = _C.packed_to_padded_tensor(
             areas, mesh_to_face[meshes.valid], max_faces
         )  # (N, F)
 

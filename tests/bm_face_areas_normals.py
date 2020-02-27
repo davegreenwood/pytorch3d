@@ -11,19 +11,19 @@ from test_face_areas_normals import TestFaceAreasNormals
 
 def bm_face_areas_normals() -> None:
     kwargs_list = []
-    backend = ["cpu"]
+    backend_cuda = [False]
     if torch.cuda.is_available():
-        backend.append("cuda:0")
+        backend_cuda.append(True)
 
     num_meshes = [2, 10, 32]
     num_verts = [100, 1000]
     num_faces = [300, 3000]
 
-    test_cases = product(num_meshes, num_verts, num_faces, backend)
+    test_cases = product(num_meshes, num_verts, num_faces, backend_cuda)
     for case in test_cases:
-        n, v, f, d = case
+        n, v, f, c = case
         kwargs_list.append(
-            {"num_meshes": n, "num_verts": v, "num_faces": f, "device": d}
+            {"num_meshes": n, "num_verts": v, "num_faces": f, "cuda": c}
         )
     benchmark(
         TestFaceAreasNormals.face_areas_normals_with_init,
