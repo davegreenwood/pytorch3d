@@ -14,7 +14,7 @@ from ..blending import (
 from ..cameras import OpenGLPerspectiveCameras
 from ..lighting import PointLights
 from ..materials import Materials
-from .shading import flat_shading, gouraud_shading, phong_shading
+from .shading import gourad_shading, phong_shading
 from .texturing import interpolate_texture_map, interpolate_vertex_colors
 
 # A Shader should take as input fragments from the output of rasterization
@@ -26,18 +26,17 @@ from .texturing import interpolate_texture_map, interpolate_vertex_colors
 #     - blend colors across top K faces per pixel.
 
 
-class HardPhongShader(nn.Module):
+class PhongShader(nn.Module):
     """
-    Per pixel lighting - the lighting model is applied using the interpolated
-    coordinates and normals for each pixel. The blending function hard assigns
-    the color of the closest face for each pixel.
+    Per pixel lighting. Apply the lighting model using the interpolated coords
+    and normals for each pixel.
 
     To use the default values, simply initialize the shader with the desired
     device e.g.
 
     .. code-block::
 
-        shader = HardPhongShader(device=torch.device("cuda:0"))
+        shader = PhongShader(device=torch.device("cuda:0"))
     """
 
     def __init__(self, device="cpu", cameras=None, lights=None, materials=None):
@@ -71,74 +70,17 @@ class HardPhongShader(nn.Module):
         return images
 
 
-class SoftPhongShader(nn.Module):
+class GouradShader(nn.Module):
     """
-    Per pixel lighting - the lighting model is applied using the interpolated
-    coordinates and normals for each pixel. The blending function returns the
-    soft aggregated color using all the faces per pixel.
+    Per vertex lighting. Apply the lighting model to the vertex colors and then
+    interpolate using the barycentric coordinates to get colors for each pixel.
 
     To use the default values, simply initialize the shader with the desired
     device e.g.
 
     .. code-block::
 
-        shader = SoftPhongShader(device=torch.device("cuda:0"))
-    """
-
-    def __init__(
-        self,
-        device="cpu",
-        cameras=None,
-        lights=None,
-        materials=None,
-        blend_params=None,
-    ):
-        super().__init__()
-        self.lights = (
-            lights if lights is not None else PointLights(device=device)
-        )
-        self.materials = (
-            materials if materials is not None else Materials(device=device)
-        )
-        self.cameras = (
-            cameras
-            if cameras is not None
-            else OpenGLPerspectiveCameras(device=device)
-        )
-        self.blend_params = (
-            blend_params if blend_params is not None else BlendParams()
-        )
-
-    def forward(self, fragments, meshes, **kwargs) -> torch.Tensor:
-        texels = interpolate_vertex_colors(fragments, meshes)
-        cameras = kwargs.get("cameras", self.cameras)
-        lights = kwargs.get("lights", self.lights)
-        materials = kwargs.get("materials", self.materials)
-        colors = phong_shading(
-            meshes=meshes,
-            fragments=fragments,
-            texels=texels,
-            lights=lights,
-            cameras=cameras,
-            materials=materials,
-        )
-        images = softmax_rgb_blend(colors, fragments, self.blend_params)
-        return images
-
-
-class HardGouraudShader(nn.Module):
-    """
-    Per vertex lighting - the lighting model is applied to the vertex colors and
-    the colors are then interpolated using the barycentric coordinates to
-    obtain the colors for each pixel. The blending function hard assigns
-    the color of the closest face for each pixel.
-
-    To use the default values, simply initialize the shader with the desired
-    device e.g.
-
-    .. code-block::
-
-        shader = HardGouraudShader(device=torch.device("cuda:0"))
+        shader = GouradShader(device=torch.device("cuda:0"))
     """
 
     def __init__(self, device="cpu", cameras=None, lights=None, materials=None):
@@ -159,7 +101,7 @@ class HardGouraudShader(nn.Module):
         cameras = kwargs.get("cameras", self.cameras)
         lights = kwargs.get("lights", self.lights)
         materials = kwargs.get("materials", self.materials)
-        pixel_colors = gouraud_shading(
+        pixel_colors = gourad_shading(
             meshes=meshes,
             fragments=fragments,
             lights=lights,
@@ -170,68 +112,11 @@ class HardGouraudShader(nn.Module):
         return images
 
 
-class SoftGouraudShader(nn.Module):
-    """
-    Per vertex lighting - the lighting model is applied to the vertex colors and
-    the colors are then interpolated using the barycentric coordinates to
-    obtain the colors for each pixel. The blending function returns the
-    soft aggregated color using all the faces per pixel.
-
-    To use the default values, simply initialize the shader with the desired
-    device e.g.
-
-    .. code-block::
-
-        shader = SoftGouraudShader(device=torch.device("cuda:0"))
-    """
-
-    def __init__(
-        self,
-        device="cpu",
-        cameras=None,
-        lights=None,
-        materials=None,
-        blend_params=None,
-    ):
-        super().__init__()
-        self.lights = (
-            lights if lights is not None else PointLights(device=device)
-        )
-        self.materials = (
-            materials if materials is not None else Materials(device=device)
-        )
-        self.cameras = (
-            cameras
-            if cameras is not None
-            else OpenGLPerspectiveCameras(device=device)
-        )
-        self.blend_params = (
-            blend_params if blend_params is not None else BlendParams()
-        )
-
-    def forward(self, fragments, meshes, **kwargs) -> torch.Tensor:
-        cameras = kwargs.get("cameras", self.cameras)
-        lights = kwargs.get("lights", self.lights)
-        materials = kwargs.get("materials", self.materials)
-        pixel_colors = gouraud_shading(
-            meshes=meshes,
-            fragments=fragments,
-            lights=lights,
-            cameras=cameras,
-            materials=materials,
-        )
-        images = softmax_rgb_blend(pixel_colors, fragments, self.blend_params)
-        return images
-
-
-class TexturedSoftPhongShader(nn.Module):
+class TexturedPhongShader(nn.Module):
     """
     Per pixel lighting applied to a texture map. First interpolate the vertex
     uv coordinates and sample from a texture map. Then apply the lighting model
     using the interpolated coords and normals for each pixel.
-
-    The blending function returns the soft aggregated color using all
-    the faces per pixel.
 
     To use the default values, simply initialize the shader with the desired
     device e.g.
@@ -282,52 +167,7 @@ class TexturedSoftPhongShader(nn.Module):
         return images
 
 
-class HardFlatShader(nn.Module):
-    """
-    Per face lighting - the lighting model is applied using the average face
-    position and the face normal. The blending function hard assigns
-    the color of the closest face for each pixel.
-
-    To use the default values, simply initialize the shader with the desired
-    device e.g.
-
-    .. code-block::
-
-        shader = HardFlatShader(device=torch.device("cuda:0"))
-    """
-
-    def __init__(self, device="cpu", cameras=None, lights=None, materials=None):
-        super().__init__()
-        self.lights = (
-            lights if lights is not None else PointLights(device=device)
-        )
-        self.materials = (
-            materials if materials is not None else Materials(device=device)
-        )
-        self.cameras = (
-            cameras
-            if cameras is not None
-            else OpenGLPerspectiveCameras(device=device)
-        )
-
-    def forward(self, fragments, meshes, **kwargs) -> torch.Tensor:
-        texels = interpolate_vertex_colors(fragments, meshes)
-        cameras = kwargs.get("cameras", self.cameras)
-        lights = kwargs.get("lights", self.lights)
-        materials = kwargs.get("materials", self.materials)
-        colors = flat_shading(
-            meshes=meshes,
-            fragments=fragments,
-            texels=texels,
-            lights=lights,
-            cameras=cameras,
-            materials=materials,
-        )
-        images = hard_rgb_blend(colors, fragments)
-        return images
-
-
-class SoftSilhouetteShader(nn.Module):
+class SilhouetteShader(nn.Module):
     """
     Calculate the silhouette by blending the top K faces for each pixel based
     on the 2d euclidean distance of the centre of the pixel to the mesh face.

@@ -8,7 +8,7 @@ import os
 import pathlib
 import warnings
 from collections import namedtuple
-from typing import List, Optional
+from typing import List
 import torch
 from fvcore.common.file_io import PathManager
 from PIL import Image
@@ -256,7 +256,7 @@ def _parse_face(
     faces_textures_idx,
     faces_materials_idx,
 ):
-    face = line.split()[1:]
+    face = line.split(" ")[1:]
     face_list = [f.split("/") for f in face]
     face_verts = []
     face_normals = []
@@ -519,7 +519,7 @@ def load_mtl(f_mtl, material_names: List, data_dir: str):
     return material_properties, texture_images
 
 
-def save_obj(f, verts, faces, decimal_places: Optional[int] = None):
+def save_obj(f, verts, faces, decimal_places: int = None):
     """
     Save a mesh to an .obj file.
 
@@ -544,7 +544,7 @@ def save_obj(f, verts, faces, decimal_places: Optional[int] = None):
 
 
 # TODO (nikhilar) Speed up this function.
-def _save(f, verts, faces, decimal_places: Optional[int] = None):
+def _save(f, verts, faces, decimal_places: int = None):
     if verts.dim() != 2 or verts.size(1) != 3:
         raise ValueError("Argument 'verts' should be of shape (num_verts, 3).")
     if faces.dim() != 2 or faces.size(1) != 3:

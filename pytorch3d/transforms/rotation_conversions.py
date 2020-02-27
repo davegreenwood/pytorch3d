@@ -2,34 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All rights reserved.
 
 import functools
-from typing import Optional
 import torch
-
-
-"""
-The transformation matrices returned from the functions in this file assume
-the points on which the transformation will be applied are column vectors.
-i.e. the R matrix is structured as
-
-    R = [
-            [Rxx, Rxy, Rxz],
-            [Ryx, Ryy, Ryz],
-            [Rzx, Rzy, Rzz],
-        ]  # (3, 3)
-
-This matrix can be applied to column vectors by post multiplication
-by the points e.g.
-
-    points = [[0], [1], [2]]  # (3 x 1) xyz coordinates of a point
-    transformed_points = R * points
-
-To apply the same matrix to points which are row vectors, the R matrix
-can be transposed and pre multiplied by the points:
-
-e.g.
-    points = [[0, 1, 2]]  # (1 x 3) xyz coordinates of a point
-    transformed_points = points * R.transpose(1, 0)
-"""
 
 
 def quaternion_to_matrix(quaternions):
@@ -107,7 +80,7 @@ def matrix_to_quaternion(matrix):
     return torch.stack((o0, o1, o2, o3), -1)
 
 
-def _axis_angle_rotation(axis: str, angle):
+def _primary_matrix(axis: str, angle):
     """
     Return the rotation matrices for one of the rotations about an axis
     of which Euler angles describe, for each value of the angle given.
@@ -119,20 +92,17 @@ def _axis_angle_rotation(axis: str, angle):
     Returns:
         Rotation matrices as tensor of shape (..., 3, 3).
     """
-
     cos = torch.cos(angle)
     sin = torch.sin(angle)
     one = torch.ones_like(angle)
     zero = torch.zeros_like(angle)
-
     if axis == "X":
-        R_flat = (one, zero, zero, zero, cos, -sin, zero, sin, cos)
+        o = (one, zero, zero, zero, cos, -sin, zero, sin, cos)
     if axis == "Y":
-        R_flat = (cos, zero, sin, zero, one, zero, -sin, zero, cos)
+        o = (cos, zero, sin, zero, one, zero, -sin, zero, cos)
     if axis == "Z":
-        R_flat = (cos, -sin, zero, sin, cos, zero, zero, zero, one)
-
-    return torch.stack(R_flat, -1).reshape(angle.shape + (3, 3))
+        o = (cos, -sin, zero, sin, cos, zero, zero, zero, one)
+    return torch.stack(o, -1).reshape(angle.shape + (3, 3))
 
 
 def euler_angles_to_matrix(euler_angles, convention: str):
@@ -156,9 +126,7 @@ def euler_angles_to_matrix(euler_angles, convention: str):
     for letter in convention:
         if letter not in ("X", "Y", "Z"):
             raise ValueError(f"Invalid letter {letter} in convention string.")
-    matrices = map(
-        _axis_angle_rotation, convention, torch.unbind(euler_angles, -1)
-    )
+    matrices = map(_primary_matrix, convention, torch.unbind(euler_angles, -1))
     return functools.reduce(torch.matmul, matrices)
 
 
@@ -247,10 +215,7 @@ def matrix_to_euler_angles(matrix, convention: str):
 
 
 def random_quaternions(
-    n: int,
-    dtype: Optional[torch.dtype] = None,
-    device=None,
-    requires_grad=False,
+    n: int, dtype: torch.dtype = None, device=None, requires_grad=False
 ):
     """
     Generate random quaternions representing rotations,
@@ -276,10 +241,7 @@ def random_quaternions(
 
 
 def random_rotations(
-    n: int,
-    dtype: Optional[torch.dtype] = None,
-    device=None,
-    requires_grad=False,
+    n: int, dtype: torch.dtype = None, device=None, requires_grad=False
 ):
     """
     Generate random rotations as 3x3 rotation matrices.
@@ -302,7 +264,7 @@ def random_rotations(
 
 
 def random_rotation(
-    dtype: Optional[torch.dtype] = None, device=None, requires_grad=False
+    dtype: torch.dtype = None, device=None, requires_grad=False
 ):
     """
     Generate a single random 3x3 rotation matrix.
