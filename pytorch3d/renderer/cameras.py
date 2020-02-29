@@ -130,7 +130,7 @@ class OpenGLPerspectiveCameras(TensorProperties):
         # so the so the z sign is 1.0.
         z_sign = 1.0
 
-        P[:, 0, 0] = 2.0 * znear / (right - left)
+        P[:, 0, 0] = - 2.0 * znear / (right - left)
         P[:, 1, 1] = 2.0 * znear / (top - bottom)
         P[:, 0, 2] = (right + left) / (right - left)
         P[:, 1, 2] = (top + bottom) / (top - bottom)
